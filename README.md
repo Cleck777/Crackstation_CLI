@@ -3,6 +3,7 @@
 
 This project is a command line interface client for the CrackQ Rest API
 ## Getting Started
+![](CrackStation.gif)
 ### Instalation
 ```
 pip install -r requirements.txt
