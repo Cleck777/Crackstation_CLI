@@ -11,3 +11,4 @@ Banner += colored('''┗┛┛┗┛┗┗┛┛┗┛┗┛ ┻ ┛┗ ┻ ┻�
 Banner += colored('''SUNY SOC''', 'white') + '''\n'''
 
 print(Banner)
+def 

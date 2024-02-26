@@ -1,6 +1,7 @@
 from typing import Callable, Dict, Optional
 #from CommandFactory import CommandFactory
 from prompt_toolkit import PromptSession
+import random
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.styles import Style
 from prompt_toolkit import print_formatted_text, HTML, ANSI
@@ -8,18 +9,15 @@ from server_commands import ServerCommands
 from termcolor import colored
 from HelpTable import HelpTable
 from OptionsTable import OptionsTable
+from Farwells import farewells
 import os
 
 class CrackStation:
-    current_command = None
+    current_command = ""
     success = colored('[+] ', 'green')
     fail = colored('[-] ', 'red')
-    HelpTable = HelpTable("Help Menu", ["Command", "Description"])
-    SettingsTable = OptionsTable("settings", ["Setting", "Value", "Required", "Description"])
-    for command in ServerCommands.SList:
-        HelpTable.add_row(command, ServerCommands.SList[command]["Description"])
-    for setting in ServerCommands.SList["settings"]["Options"]:
-        SettingsTable.add_row(setting, ServerCommands.SList["settings"]["Options"][setting], "Yes", "")
+    server_commands = ServerCommands()
+    
     def __init__(self) -> None:
         pass
     
@@ -32,29 +30,36 @@ class CrackStation:
             args = ""
 
         if command == "exit":
+            print(self.success +  random.choice(farewells))
             exit()
         elif command == "help":
-            self.HelpTable.display()
+            self.server_commands.HelperTable.display()
+            self.server_commands.AdvancedTable.display()
         elif command == "settings":
             self.current_command = "settings"
+        elif command == "crack":
+            self.current_command = "crack"
         elif command == "back":
             self.current_command = None
-        elif command == "show" and args == "options":
-            if not self.current_command:
-                print(self.fail + "No command selected")
+        elif command == "show":
+            if not args:
+                print(self.fail + "Please state what you would like to show")
                 return
+            if args == "options" and self.current_command:
+                self.show_options()
+            else: 
+                print(self.fail + "No command selected")
             
         else:
             print(self.fail + "Unknown command " +'"' + command + '"')
 
     def show_options(self):
-        if self.current_command:
-            if self.current_command in ServerCommands.SList:
-                print(self.SettingsTable.display())
-            else:
-                print(self.fail + "No options for " + self.current_command)
-        else:
-            print(self.fail + "No command selected")
+        print(self.success + self.current_command)
+        if not self.current_command or self.current_command not in self.server_commands.SList:
+            print(self.fail + "No command selected or no options available for the current command.")
+            return
+        table = self.server_commands.SList[self.current_command]["Table"]
+        table.display()
             
 
 
@@ -68,9 +73,9 @@ if __name__ == "__main__":
     'prompt': '#ff6b6b',  # Using an RGB value for custom color
 })
     current_command = CrackStation.current_command
-    server_commands = ServerCommands()
+    server_commands = CrackStation.server_commands
    
-    username = server_commands.SList["settings"]["Options"]["Username"]
+    username = server_commands.SList["settings"]["Options"]["Username"]["Value"]
  
     CrackStation = CrackStation()
     print(Banner)
@@ -79,12 +84,13 @@ if __name__ == "__main__":
         while True:
             if CrackStation.current_command:
                
-                prompt_text = HTML('<ansiblue>{username}</ansiblue><ansiwhite>@{ip}></ansiwhite> <ansiwhite>[</ansiwhite><ansired>{command}</ansired><ansiwhite>] > </ansiwhite>'.format(username=username, ip=server_commands.SList["settings"]["Options"]["Server_IP"], command=CrackStation.current_command))
+                prompt_text = HTML('<ansiblue>{username}</ansiblue><ansiwhite>@{ip}></ansiwhite> <ansiwhite>[</ansiwhite><ansired>{command}</ansired><ansiwhite>] > </ansiwhite>'.format(username=username, ip=server_commands.SList["settings"]["Options"]["Server_IP"]["Value"], command=CrackStation.current_command))
             else:
-                prompt_text = HTML('<ansiblue>{username}</ansiblue><ansiwhite>@{ip}></ansiwhite> '.format(username=username, ip=server_commands.SList["settings"]["Options"]["Server_IP"]))
+                prompt_text = HTML('<ansiblue>{username}</ansiblue><ansiwhite>@{ip}></ansiwhite> '.format(username=username, ip=server_commands.SList["settings"]["Options"]["Server_IP"]["Value"]))
             # Use prompt_toolkit's session to read input with support for history
             
             user_input = session.prompt(prompt_text)
             CrackStation.input_handler(user_input)
     except KeyboardInterrupt:
-        print(CrackStation.fail + "Exiting CrackStation CLI...")
+        print(CrackStation.success + random.choice(farewells))
+        exit()

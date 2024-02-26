@@ -11,9 +11,9 @@ class OptionsTable:
 
     def _rebuild_table(self):
         """Rebuilds the table from the stored data."""
-        self.table = Table(title=self.title)
+        self.table = Table(title=self.title, title_style="bold",)
         for name in self.column_names:
-            self.table.add_column(name, style="cyan", no_wrap=True)
+            self.table.add_column(name, style="light_green", no_wrap=True)
         for row_data in self.data:
             self.table.add_row(*row_data)
 
