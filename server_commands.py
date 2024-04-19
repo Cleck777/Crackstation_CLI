@@ -1,7 +1,7 @@
 import os
 from OptionsTable import OptionsTable
 from HelpTable import HelpTable
-
+from APIHandler import APIHandler
 class ServerCommands:
     AdvancedTable = HelpTable("Advanced Commands", ["Command", "Description"])
     HelperTable = HelpTable("Generic Commands", ["Command", "Description"])
@@ -23,6 +23,9 @@ class ServerCommands:
         "back": {
             "Description": "Return to the previous command"
         },
+        "set": {
+            "Description": "Set a value"
+        },
     }
     SList = {
         "settings": {
@@ -31,17 +34,20 @@ class ServerCommands:
                 "Username": {
                     "Value": "",
                     "Required": "Yes",
-                    "Description": "Username"
+                    "Description": "Username",
+                    "Location": 0
                 },
                 "Server_IP": {
                     "Value": "",
                     "Required": "Yes",
-                    "Description": "Username"
+                    "Description": "Username",
+                    "Location": 1
                 },
                 "Server_Port": {
                     "Value": "",
                     "Required": "Yes",
-                    "Description": "Username"
+                    "Description": "Username",
+                    "Location": 2
                 }
             },
             "Table": SettingsTable
@@ -52,20 +58,26 @@ class ServerCommands:
                 "Hash_Location": {
                     "Value" : "",
                     "Required": "Yes",
-                    "Description": "Path of the hashes for cracking"
+                    "Description": "Path of the hashes for cracking",
+                    "Location": 0
                 },
                 "Wordlist": {
                     "Value" : "",
                     "Required": "Yes",
-                    "Description": "Path of the Wordlist typically found in /etc/wordlists"
+                    "Description": "Path of the Wordlist typically found in /etc/wordlists",
+                    "Location": 1
                 },
                 "Hash_Type":{
                     "Value" : "",
                     "Required": "Yes",
-                    "Description": "Number for the hash type in relation to number described in hashcat"
+                    "Description": "Number for the hash type in relation to number described in hashcat",
+                    "Location": 2
                 }
             },
             "Table": CrackTable
+        },
+        "log": {
+            "Description": "Show logs"
         },
     }
 

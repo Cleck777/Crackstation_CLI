@@ -9,13 +9,18 @@ from server_commands import ServerCommands
 from termcolor import colored
 from HelpTable import HelpTable
 from OptionsTable import OptionsTable
+from APIHandler import APIHandler
 from Farwells import farewells
+from halo import Halo
 import os
+import getpass
+import json
 
 class CrackStation:
     current_command = ""
     success = colored('[+] ', 'green')
     fail = colored('[-] ', 'red')
+    
     server_commands = ServerCommands()
     
     def __init__(self) -> None:
@@ -24,6 +29,7 @@ class CrackStation:
     def input_handler(self, user_input: str) -> None:
         parts = user_input.split(maxsplit=1)
         command = parts[0]
+        spinner = Halo(text="Requesting for " + command, spinner='dots')
         if len(parts) > 1:
             args = parts[1]
         else:
@@ -41,6 +47,32 @@ class CrackStation:
             self.current_command = "crack"
         elif command == "back":
             self.current_command = None
+        elif command == "set":
+            if not args:
+                print(self.fail + "Please state what you would like to set")
+                return
+            if self.current_command:
+                option, value = args.split(maxsplit=1)
+                self.set_option(option, value)
+            else:
+                print(self.fail + "No command selected")
+        elif command == "log":
+            spinner.start()
+            error = APIHandler.option_operations()
+            spinner.stop()
+            print(self.fail + error)
+        elif command == "login":
+            print("")
+            username = server_commands.SList["settings"]["Options"]["Username"]["Value"]
+
+            password = getpass.getpass("Enter password for " + username + ": ")
+            username = server_commands.SList["settings"]["Options"]["Username"]["Value"]
+            credentials = json.dumps({"user": username, "password": password})
+
+            spinner.start()
+            error = APIHandler.authentication_operations("login", credentials)
+            spinner.stop()
+            print(self.fail + error)
         elif command == "show":
             if not args:
                 print(self.fail + "Please state what you would like to show")
@@ -60,7 +92,17 @@ class CrackStation:
             return
         table = self.server_commands.SList[self.current_command]["Table"]
         table.display()
-            
+    def set_option(self, option: str, value: str) -> None:
+    
+        if self.current_command:
+            if option in ServerCommands.SList[self.current_command]["Options"] and value:
+                ServerCommands.SList[self.current_command]["Options"][option]["Value"] = value
+                ServerCommands.SList[self.current_command]["Table"].modify_row(ServerCommands.SList[self.current_command]["Options"][option]["Location"] , value)
+                print(self.success + "Set " + option + " to " + value)
+            else:
+                print(self.fail + "Option not found")
+        else:
+            print(self.fail + "No command selected")
 
 
 if __name__ == "__main__":
@@ -78,6 +120,7 @@ if __name__ == "__main__":
     username = server_commands.SList["settings"]["Options"]["Username"]["Value"]
  
     CrackStation = CrackStation()
+    APIHandler = APIHandler()
     print(Banner)
     session = PromptSession(history=InMemoryHistory())
     try:
