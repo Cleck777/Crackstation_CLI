@@ -1,33 +1,44 @@
 import requests
 from requests.exceptions import RequestException, ConnectionError, HTTPError
-
 from urllib3.exceptions import InsecureRequestWarning
-import requests
+
+# Disable the insecure request warnings
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 class APIHandler:
     def __init__(self, base_url="https://192.168.56.101:443"):
         self.base_url = base_url
+        self.session = requests.Session()  # Use session to maintain state, including headers
+        self.csrf_token = self.pull_csrf_token()  # Pull CSRF token at initialization
+
+    def pull_csrf_token(self):
+        """ Pull the CSRF token using OPTIONS request and store it in the session headers """
+        response = self.session.options(f"{self.base_url}/api/login", verify=False)
+        csrf_token = response.headers.get('X-CSRF-Token', '')
+        if csrf_token:
+            self.session.headers.update({'X-CSRF-Token': csrf_token})
+        return csrf_token
 
     def call_api(self, endpoint, method="GET", data=None, params=None):
         url = f"{self.base_url}{endpoint}"
         try:
-            # Choose the request method based on the 'method' parameter
+            # Use the session object which contains the CSRF token in headers
             if method == "GET":
-                response = requests.get(url, params=params, verify=False)
+                response = self.session.get(url, params=params, verify=False)
             elif method == "POST":
-                print(data)
-                response = requests.post(url, json=data, verify=False)
+                response = self.session.post(url, json=data, verify=False)
             elif method == "PUT":
-                response = requests.put(url, json=data, verify=False)
+                response = self.session.put(url, json=data, verify=False)
             elif method == "DELETE":
-                response = requests.delete(url, json=data, verify=False)
+                response = self.session.delete(url, json=data, verify=False)
             elif method == "PATCH":
-                response = requests.patch(url, json=data, verify=False)
+                response = self.session.patch(url, json=data, verify=False)
+            elif method == "OPTIONS":
+                response = self.session.options(url, verify=False)
             else:
                 raise ValueError("Invalid HTTP method")
 
-            # Check for HTTP errors
-            response.raise_for_status()
+            response.raise_for_status()  # Check for HTTP errors
             return response.json()
 
         except HTTPError as e:
@@ -67,6 +78,10 @@ class APIHandler:
 
     def report_operations(self, data=None, method="GET"):
         return self.call_api("/api/reports", method, data)
+    def pull_csrf_token(self):
+        response = self.call_api("/api/login", "OPTIONS")
+        csrf_token = response.headers['X-CSRF-Token']
+    
 
     def task_template_operations(self, temp_id=None, data=None, method="GET"):
         if temp_id:

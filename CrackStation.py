@@ -28,6 +28,10 @@ class CrackStation:
     
     def input_handler(self, user_input: str) -> None:
         parts = user_input.split(maxsplit=1)
+        if len(parts) < 1:  # Add this check
+            print(self.fail + "Invalid command")
+            return
+        
         command = parts[0]
         spinner = Halo(text="Requesting for " + command, spinner='dots')
         if len(parts) > 1:
@@ -123,6 +127,7 @@ if __name__ == "__main__":
     APIHandler = APIHandler()
     print(Banner)
     session = PromptSession(history=InMemoryHistory())
+    
     try:
         while True:
             if CrackStation.current_command:
