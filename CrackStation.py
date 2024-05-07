@@ -121,15 +121,20 @@ if __name__ == "__main__":
     current_command = CrackStation.current_command
     server_commands = CrackStation.server_commands
    
-    username = server_commands.SList["settings"]["Options"]["Username"]["Value"]
+    
  
     CrackStation = CrackStation()
-    APIHandler = APIHandler()
     print(Banner)
+    spinner = Halo(text="Trying to connect", spinner='dots')
+    spinner.start()
+    APIHandler = APIHandler()
+    spinner.stop()
+    
     session = PromptSession(history=InMemoryHistory())
     
     try:
         while True:
+            username = server_commands.SList["settings"]["Options"]["Username"]["Value"]
             if CrackStation.current_command:
                
                 prompt_text = HTML('<ansiblue>{username}</ansiblue><ansiwhite>@{ip}></ansiwhite> <ansiwhite>[</ansiwhite><ansired>{command}</ansired><ansiwhite>] > </ansiwhite>'.format(username=username, ip=server_commands.SList["settings"]["Options"]["Server_IP"]["Value"], command=CrackStation.current_command))
