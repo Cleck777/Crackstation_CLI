@@ -15,7 +15,7 @@ class OptionsTable:
         for name in self.column_names:
             self.table.add_column(name, style="light_green", no_wrap=True)
         for row_data in self.data:
-            self.table.add_row(*row_data)
+            self.table.add_row(*map(str, row_data))
 
     def add_row(self, option, current_setting="", required="", description=""):
         """Add a row to the table and update the data list."""

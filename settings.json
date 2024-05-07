@@ -1,0 +1,24 @@
+{
+    "settings": {
+        "Username": "admin",
+        "Server_IP": "localhost",
+        "Server_Port": ""
+    },
+    "crack": {
+        "name": "job1",
+        "hash_mode": "0",
+        "hash_list": [
+            "cc3a0280e4fc1415930899896574e118"
+        ],
+        "wordlist": "rockyou",
+        "wordlist2": "null",
+        "rules": [],
+        "attack_mode": "0",
+        "mask": "null",
+        "mask_file": [],
+        "notify": "false",
+        "increment": "false",
+        "potcheck": "false",
+        "timeout": "1814400"
+    }
+}

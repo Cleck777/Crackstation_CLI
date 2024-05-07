@@ -5,7 +5,6 @@ import random
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.styles import Style
 from prompt_toolkit import print_formatted_text, HTML, ANSI
-from server_commands import ServerCommands 
 from termcolor import colored
 from HelpTable import HelpTable
 from OptionsTable import OptionsTable
@@ -15,25 +14,63 @@ from halo import Halo
 import os
 import getpass
 import json
+import subprocess
 
 class CrackStation:
     current_command = ""
     success = colored('[+] ', 'green')
+    info = colored('[*] ', 'blue')
     fail = colored('[-] ', 'red')
+    item = colored('[$] ', 'magenta', attrs=['blink'])  
+    connected = False
     
-    server_commands = ServerCommands()
     
+    spinner = Halo(text="Trying to connect", spinner='dots')
     def __init__(self) -> None:
-        pass
+        
+        self.api_handler = APIHandler()
+        self.login_user()
+    
+    def sub_command_handler(self, command: str) -> None:
+        if command in self.api_handler.server_commands.SList[self.current_command]["commands"]:
+            if command == 'queue':
+                result = self.api_handler.queue_operations()
+            
+
+        else:
+            print(self.fail + "Unknown command")
+            self.input_handler(command)
+
+    def login_user(self) -> None:
+        username = self.api_handler.server_commands.SList["settings"]["Options"]["Username"]["Value"]
+
+        password = getpass.getpass("Enter password for " + username + ": ")
+        username = self.api_handler.server_commands.SList["settings"]["Options"]["Username"]["Value"]
+        credentials = {"user": username, "password": password}
+        #print(credentials)
+
+        self.spinner.start()
+        error = self.api_handler.authentication_operations("login", credentials)
+        self.spinner.stop()
+        if error == "OK":
+            print(self.success + "CONNECTED")
+            self.connected = True
+        else:
+            print(self.fail + error)
+            
+    
     
     def input_handler(self, user_input: str) -> None:
+
+
+
         parts = user_input.split(maxsplit=1)
         if len(parts) < 1:  # Add this check
             print(self.fail + "Invalid command")
             return
         
         command = parts[0]
-        spinner = Halo(text="Requesting for " + command, spinner='dots')
+        self.spinner = Halo(text="Requesting for " + command, spinner='dots')
         if len(parts) > 1:
             args = parts[1]
         else:
@@ -43,8 +80,8 @@ class CrackStation:
             print(self.success +  random.choice(farewells))
             exit()
         elif command == "help":
-            self.server_commands.HelperTable.display()
-            self.server_commands.AdvancedTable.display()
+            self.api_handler.server_commands.HelperTable.display()
+            self.api_handler.server_commands.AdvancedTable.display()
         elif command == "settings":
             self.current_command = "settings"
         elif command == "crack":
@@ -61,22 +98,12 @@ class CrackStation:
             else:
                 print(self.fail + "No command selected")
         elif command == "log":
-            spinner.start()
-            error = APIHandler.option_operations()
-            spinner.stop()
+            self.spinner.start()
+            error = self.api_handler.option_operations()
+            self.spinner.stop()
             print(self.fail + error)
         elif command == "login":
-            print("")
-            username = server_commands.SList["settings"]["Options"]["Username"]["Value"]
-
-            password = getpass.getpass("Enter password for " + username + ": ")
-            username = server_commands.SList["settings"]["Options"]["Username"]["Value"]
-            credentials = json.dumps({"user": username, "password": password})
-
-            spinner.start()
-            error = APIHandler.authentication_operations("login", credentials)
-            spinner.stop()
-            print(self.fail + error)
+            self.login_user()
         elif command == "show":
             if not args:
                 print(self.fail + "Please state what you would like to show")
@@ -87,22 +114,48 @@ class CrackStation:
                 print(self.fail + "No command selected")
             
         else:
-            print(self.fail + "Unknown command " +'"' + command + '"')
+            try:
+                details = self.api_handler.server_commands.SList[self.current_command]["commands"]
+            except KeyError:
+                print(self.fail + "Unknown server and bash command")
+                return
+        
+            print(details)
+            if self.current_command and command in details:
+                self.sub_command_handler(command)
+            else:
+                process = subprocess.run(user_input, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                
+                if process.returncode == 0:
+                    print(process.stdout)
+                else:
+                    print(self.fail + "Unknown server and bash command")
+            
+        
 
     def show_options(self):
         print(self.success + self.current_command)
-        if not self.current_command or self.current_command not in self.server_commands.SList:
+        if not self.current_command or self.current_command not in self.api_handler.server_commands.SList:
             print(self.fail + "No command selected or no options available for the current command.")
             return
-        table = self.server_commands.SList[self.current_command]["Table"]
+        table = self.api_handler.server_commands.SList[self.current_command]["Table"]
         table.display()
+        print(self.info + "Avaliable commands")
+        if self.current_command:
+            details = self.api_handler.server_commands.SList[self.current_command]
+            if "commands" in details:
+                
+                for cmd, cmd_details in details["commands"].items():
+                    print(" "+ self.item + cmd + " : " + cmd_details['Description'])
+        else:
+            print(self.fail + "No command selected")
     def set_option(self, option: str, value: str) -> None:
     
         if self.current_command:
-            if option in ServerCommands.SList[self.current_command]["Options"] and value:
-                ServerCommands.SList[self.current_command]["Options"][option]["Value"] = value
-                ServerCommands.SList[self.current_command]["Table"].modify_row(ServerCommands.SList[self.current_command]["Options"][option]["Location"] , value)
-                print(self.success + "Set " + option + " to " + value)
+            if option in self.api_handler.server_commands.SList[self.current_command]["Options"] and value:
+                self.api_handler.server_commands.SList[self.current_command]["Options"][option]["Value"] = value
+                self.api_handler.server_commands.SList[self.current_command]["Table"].modify_row(self.api_handler.server_commands.SList[self.current_command]["Options"][option]["Location"] , value)
+                print(" "+ self.success + "Set " + option + " to " + value)
             else:
                 print(self.fail + "Option not found")
         else:
@@ -119,31 +172,42 @@ if __name__ == "__main__":
     'prompt': '#ff6b6b',  # Using an RGB value for custom color
 })
     current_command = CrackStation.current_command
-    server_commands = CrackStation.server_commands
+    
    
     
- 
-    CrackStation = CrackStation()
     print(Banner)
-    spinner = Halo(text="Trying to connect", spinner='dots')
-    spinner.start()
-    APIHandler = APIHandler()
-    spinner.stop()
+    CrackStation = CrackStation()
+    
+    
+    CrackStation.spinner.start()
+   
+    CrackStation.spinner.stop()
     
     session = PromptSession(history=InMemoryHistory())
     
     try:
         while True:
-            username = server_commands.SList["settings"]["Options"]["Username"]["Value"]
-            if CrackStation.current_command:
-               
-                prompt_text = HTML('<ansiblue>{username}</ansiblue><ansiwhite>@{ip}></ansiwhite> <ansiwhite>[</ansiwhite><ansired>{command}</ansired><ansiwhite>] > </ansiwhite>'.format(username=username, ip=server_commands.SList["settings"]["Options"]["Server_IP"]["Value"], command=CrackStation.current_command))
+            username = CrackStation.api_handler.server_commands.SList["settings"]["Options"]["Username"]["Value"]
+            if CrackStation.connected:
+
+                if CrackStation.current_command:
+                
+                    prompt_text = HTML('<ansiblue>{username}</ansiblue><ansiwhite>@{ip}></ansiwhite> <ansiwhite>[</ansiwhite><ansired>{command}</ansired><ansiwhite>] > </ansiwhite>'.format(username=username, ip=CrackStation.api_handler.server_commands.SList["settings"]["Options"]["Server_IP"]["Value"], command=CrackStation.current_command))
+                else:
+                    prompt_text = HTML('<ansiblue>{username}</ansiblue><ansiwhite>@{ip}></ansiwhite> '.format(username=username, ip=CrackStation.api_handler.server_commands.SList["settings"]["Options"]["Server_IP"]["Value"]))
             else:
-                prompt_text = HTML('<ansiblue>{username}</ansiblue><ansiwhite>@{ip}></ansiwhite> '.format(username=username, ip=server_commands.SList["settings"]["Options"]["Server_IP"]["Value"]))
+
+                if CrackStation.current_command:
+                
+                    prompt_text = HTML('<ansiblue>{username}</ansiblue><ansiwhite>@</ansiwhite><ansired>{ip}</ansired><ansiwhite>></ansiwhite> <ansiwhite>[</ansiwhite><ansired>{command}</ansired><ansiwhite>] > </ansiwhite>'.format(username=username, ip="NOT_CONNECTED", command=CrackStation.current_command))
+                else:
+                    prompt_text = HTML('<ansiblue>{username}</ansiblue><ansiwhite>@</ansiwhite><ansired>{ip}</ansired><ansiwhite>></ansiwhite> '.format(username=username, ip="NOT_CONNECTED"))
+
             # Use prompt_toolkit's session to read input with support for history
             
             user_input = session.prompt(prompt_text)
             CrackStation.input_handler(user_input)
     except KeyboardInterrupt:
         print(CrackStation.success + random.choice(farewells))
+        CrackStation.api_handler.server_commands.save_settings()
         exit()

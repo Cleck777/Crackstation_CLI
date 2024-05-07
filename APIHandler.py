@@ -1,13 +1,15 @@
 import requests
 from requests.exceptions import RequestException, ConnectionError, HTTPError
 from urllib3.exceptions import InsecureRequestWarning
-
+from server_commands import ServerCommands
+import json
 # Disable the insecure request warnings
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 class APIHandler:
     def __init__(self, base_url="https://localhost:443"):
         self.base_url = base_url
+        self.server_commands = ServerCommands()
         self.session = requests.Session()  # Use session to maintain state, including headers
         self.csrf_token = self.pull_csrf_token()  # Pull CSRF token at initialization
         self.proxies = {
@@ -24,38 +26,39 @@ class APIHandler:
         csrf_token = self.session.cookies.get('csrftoken', '')
         if csrf_token:
             # Update session headers to include the CSRF token for subsequent requests
-            self.session.headers.update({
-                'Referer': f"{self.base_url}/login"
-            })
+            if csrf_token:
+                self.session.headers.update({
+                    'X-CSRFToken': csrf_token,
+                    'Referer': f"{self.base_url}/login"
+                })
+
         return csrf_token
     def call_api(self, endpoint, method="GET", data=None, params=None):
         url = f"{self.base_url}{endpoint}"
         try:
-            print(f"URL: {url}")
-            print(f"Method: {method}")
-            print(f"Headers: {self.session.headers}")
+            #print(f"URL: {url}")
+            #print(f"Method: {method}")
+            #print(f"Headers: {self.session.headers}")
+
             if data:
-                print(f"Body: {data}")
-            # Use the session object which contains the CSRF token in headers
-            if method == "GET":
-                response = self.session.get(url, params=params, verify=False)
-            elif method == "POST":
-                
-                response = self.session.post(url, json=data, verify=False)
-                
-                
-
-            elif method == "PUT":
-                response = self.session.put(url, json=data, verify=False)
-            elif method == "DELETE":
-                response = self.session.delete(url, json=data, verify=False)
-            elif method == "PATCH":
-                response = self.session.patch(url, json=data, verify=False)
-            elif method == "OPTIONS":
-                response = self.session.options(url, verify=False)
+                #print(f"Body: {data}")
+                response = self.session.post(url, json=data, verify=False)  # Directly pass the JSON data
             else:
-                raise ValueError("Invalid HTTP method")
-
+                if method == "GET":
+                    response = self.session.get(url, params=params, verify=False)
+                elif method == "POST":
+                    response = self.session.post(url, json=data, verify=False)
+                elif method == "PUT":
+                    response = self.session.put(url, json=data, verify=False)
+                elif method == "DELETE":
+                    response = self.session.delete(url, json=data, verify=False)
+                elif method == "PATCH":
+                    response = self.session.patch(url, json=data, verify=False)
+                elif method == "OPTIONS":
+                    response = self.session.options(url, verify=False)
+                else:
+                    raise ValueError("Invalid HTTP method")
+            
             response.raise_for_status()  # Check for HTTP errors
             return response.json()
 
@@ -64,17 +67,11 @@ class APIHandler:
         except ConnectionError as e:
             return f"Connection error occurred: {str(e)}"
         except RequestException as e:
+            if response.status_code == 200:
+                return "OK"
             return f"Request error occurred: {str(e)}"
         except ValueError as e:
             return f"Error: {str(e)}"
-        # Print response details
-        print(f"Response Status Code: {response.status_code}")
-        print(f"Response Headers: {response.headers}")
-        if response.text:
-            print(f"Response Body: {response.text}")
-
-        response.raise_for_status()  # Check for HTTP errors
-        return response.json()
 
 
     def admin_operations(self, user_id=None, data=None, method="GET"):
@@ -95,7 +92,17 @@ class APIHandler:
             "logout": "/api/logout"
         }
         return self.call_api(operations[operation], method, data)
+    def queue_operations(self, data=None, method="POST"):
+        print("Queue operations")
+        data_toSend = {}
+        data = self.server_commands.SList["crack"]["Options"]
+        for key in data:
+            
+            data_toSend[key] = data[key]["Value"]
 
+        result = self.call_api("/api/add", method, data_toSend)
+        result = self.response_handler(result)
+        print(result)
     def option_operations(self):
         return self.call_api("/api/options", "GET")
 
@@ -118,3 +125,11 @@ class APIHandler:
         if task_id:
             return self.call_api(f"/api/tasks/{task_id}", method, data)
         return self.call_api("/api/tasks", method, data)
+    def response_handler(self, response):
+        print(response)
+        if response == "OK":
+            return "OK"
+        elif isinstance(response, dict):
+            return json.dumps(response, indent=2)
+        else:
+            return response
